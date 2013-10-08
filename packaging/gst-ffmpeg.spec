@@ -48,6 +48,9 @@ make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/usr/share/license
+cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{name}
+cat %{_builddir}/%{name}-%{version}/COPYING.LIB >> %{buildroot}/usr/share/license/%{name}
 %make_install
 
 
@@ -55,3 +58,4 @@ rm -rf %{buildroot}
 %manifest gst-ffmpeg.manifest
 %defattr(-,root,root,-)
 /usr/lib/gstreamer-0.10/libgstffmpeg.so
+/usr/share/license/%{name}
