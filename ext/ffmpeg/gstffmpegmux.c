@@ -503,13 +503,13 @@ gst_ffmpegmux_class_init (GstFFMpegMuxClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_PRELOAD,
       g_param_spec_int ("preload", "preload",
-          "Set the initial demux-decode delay (in microseconds)", 0, G_MAXINT,
-          0, G_PARAM_READWRITE));
+          "Set the initial demux-decode delay (in microseconds)",
+          0, G_MAXINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_MAXDELAY,
       g_param_spec_int ("maxdelay", "maxdelay",
           "Set the maximum demux-decode delay (in microseconds)", 0, G_MAXINT,
-          0, G_PARAM_READWRITE));
+          0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gstelement_class->request_new_pad = gst_ffmpegmux_request_new_pad;
   gstelement_class->change_state = gst_ffmpegmux_change_state;
@@ -522,15 +522,15 @@ gst_ffmpegmux_class_init (GstFFMpegMuxClass * klass)
   g_object_class_install_property (gobject_class, PROP_EXPECTED_TRAILER_SIZE,
       g_param_spec_uint ("expected-trailer-size", "Expected Trailer Size",
           "Expected trailer size (bytes)",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_NUMBER_VIDEO_FRAMES,
       g_param_spec_uint ("number-video-frames", "Number of video frames",
           "Current number of video frames",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_NUMBER_AUDIO_FRAMES,
       g_param_spec_uint ("number-audio-frames", "Number of audio frames",
           "Current number of audio frames",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 #endif
 }
 
@@ -606,11 +606,14 @@ gst_ffmpegmux_release_pad (GstElement * element, GstPad * pad)
 		MOVMuxContext *mov = ffmpegmux->context->priv_data;
 		if(mov && mov->tracks)
 		{
-			MOVTrack *trk = &mov->tracks[collect_pad->padnum];
-			if(trk && trk->vosData)
+			for(i=0;i<ffmpegmux->context->nb_streams;i++)
 			{
-				av_free(trk->vosData);
-				trk->vosData = NULL;
+				MOVTrack *trk = &mov->tracks[i];
+				if(trk && trk->vosData)
+				{
+					av_free(trk->vosData);
+					trk->vosData = NULL;
+				}
 			}
 			av_free(mov->tracks);
 			mov->tracks = NULL;

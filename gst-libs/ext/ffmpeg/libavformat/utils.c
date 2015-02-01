@@ -18,6 +18,7 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#include "movenc.h"
 #include "avformat.h"
 #include "internal.h"
 #include "libavcodec/opt.h"
@@ -2947,6 +2948,7 @@ int av_interleaved_write_frame(AVFormatContext *s, AVPacket *pkt){
 int av_write_trailer(AVFormatContext *s)
 {
     int ret, i;
+    MOVMuxContext *mov = s->priv_data;
 
     for(;;){
         AVPacket pkt;
@@ -2974,6 +2976,17 @@ fail:
     for(i=0;i<s->nb_streams;i++) {
         av_freep(&s->streams[i]->priv_data);
         av_freep(&s->streams[i]->index_entries);
+        if(mov && mov->tracks)
+        {
+            MOVTrack *trk = &mov->tracks[i];
+            if(trk && trk->vosData)
+            {
+                av_free(trk->vosData);
+                trk->vosData = NULL;
+            }
+            av_free(mov->tracks);
+            mov->tracks = NULL;
+        }
     }
     av_freep(&s->priv_data);
     return ret;

@@ -16,8 +16,6 @@ BuildRequires:  gst-plugins-base-devel
 BuildRequires:  pkgconfig(gstreamer-0.10) 
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(zlib)
-BuildRequires:  pkgconfig(vorbis)
-BuildRequires:  pkgconfig(theora)
 
 %description
 This GStreamer plugin supports a large number of audio and video compression
@@ -38,11 +36,18 @@ demuxing 30+ formats and colorspace conversion.
 export CFLAGS+=" -Wall -Wno-unused-but-set-variable -Wno-implicit-function-declaration -g -fPIC\
  -DFFDEC_RANK_MODIFICATION"
 
-%configure  --disable-static \
-	--disable-nls \
-	--prefix=%{_prefix} \
-	--with-html-dir=/tmp/dump
+export EXTRA_CONFIGURE="--disable-gpl"
 
+%ifarch %{arm}
+export EXTRA_CONFIGURE="$EXTRA_CONFIGURE --disable-libvorbis --disable-libtheora --enable-decoders --enable-encoders"
+%else
+export EXTRA_CONFIGURE="$EXTRA_CONFIGURE --disable-libvorbis --disable-libtheora"
+%endif
+%configure  --disable-static \
+        --disable-nls \
+        --prefix=%{_prefix} \
+        --with-html-dir=/tmp/dump \
+        --with-ffmpeg-extra-configure="$EXTRA_CONFIGURE"
 
 make %{?jobs:-j%jobs}
 

@@ -301,7 +301,8 @@ else
 
   AC_ARG_WITH(ffmpeg-extra-configure, 
       AC_HELP_STRING([--with-ffmpeg-extra-configure="xxx"],
-      [extra configure options for internal ffmpeg ./configure script]),,
+      [extra configure options for internal ffmpeg ./configure script]),
+      [ffmpeg-extra-configure="$withval"],
       with_ffmpeg_extra_configure=no)
 
   # basic arguments
@@ -316,72 +317,73 @@ else
 # ffmpeg cannot support msmpeg4v1 encoder properly.
 #	--enable-encoder=msmpeg4v1
 
-	embffmpeg_configure_args="$embffmpeg_configure_args \
-							  --enable-static --enable-pic --enable-optimizations \
-							  --disable-doc \
-							  --disable-gpl  --disable-postproc --disable-swscale  \
-							  --disable-mmx --enable-neon \
-							  --disable-ffmpeg --disable-ffprobe --disable-ffserver --disable-ffplay   \
-							  --disable-decoders --disable-encoders \
-							  --disable-muxers --disable-demuxers \
-							  --disable-parsers  \
-							  --disable-protocols --disable-network --disable-bsfs --disable-devices --disable-filters  \
-							  --enable-libvorbis --enable-libtheora \
-							  --enable-encoder=aac  \
-							  --enable-encoder=h263  \
-							  --enable-encoder=h263p \
-							  --disable-encoder=mpeg4 \
-							  --disable-encoder=msmpeg4v2 \
-							  --disable-encoder=msmpeg4v3 \
-							  --enable-decoder=aac   \
-							  --disable-decoder=ac3   \
-							  --enable-decoder=h263  \
-							  --disable-decoder=h264  \
-							  --enable-decoder=mp3   \
-							  --disable-decoder=mp3adu    \
-							  --disable-decoder=mpeg4 \
-                           --disable-decoder=rv10 \
-                           --disable-decoder=rv20 \
-                           --disable-decoder=rv30 \
-                           --disable-decoder=rv40 \
-                           --disable-decoder=cook \
-                           --disable-decoder=sipr \
-                           --disable-decoder=ra_144 \
-                           --disable-decoder=ra_288 \
-							  --disable-decoder=mpegvideo \
-							  --disable-decoder=msmpeg4v1  \
-							  --disable-decoder=msmpeg4v2  \
-							  --disable-decoder=msmpeg4v3  \
-							  --disable-decoder=wmv3   \
-							  --disable-decoder=vc1   \
-							  --disable-decoder=wmav1     \
-							  --disable-decoder=wmav2     \
-							  --enable-decoder=theora     \
-							  --enable-decoder=vorbis     \
-							  --enable-muxer=amr \
-							  --enable-muxer=tgp \
-							  --enable-muxer=mp4 \
-							  --enable-muxer=adts \
-							  --enable-demuxer=aac   \
-							  --enable-demuxer=ac3   \
-							  --enable-demuxer=avi   \
-							  --enable-demuxer=amr   \
-							  --enable-demuxer=h263    \
-							  --enable-demuxer=h264  \
-							  --enable-demuxer=m4v   \
-							  --enable-demuxer=mov   \
-							  --enable-demuxer=mp3   \
-							  --enable-demuxer=mpegts    \
-							  --enable-demuxer=mpegps    \
-							  --enable-demuxer=mpegtsraw \
-							  --enable-demuxer=mpegvideo \
-							  --enable-parser=aac    \
-							  --enable-parser=ac3    \
-							  --enable-parser=h263   \
-							  --enable-parser=h264   \
-							  --enable-parser=mpeg4video \
-							  --enable-parser=mpegaudio  \
-							  --enable-parser=mpegvideo"
+  embffmpeg_configure_args="$embffmpeg_configure_args \
+                            --enable-static --enable-pic --enable-optimizations \
+                            --disable-doc \
+                            --disable-gpl  --disable-postproc --disable-swscale  \
+                            --disable-mmx --enable-neon \
+                            --disable-ffmpeg --disable-ffprobe --disable-ffserver --disable-ffplay   \
+                            --disable-decoders --disable-encoders \
+                            --disable-muxers --disable-demuxers \
+                            --disable-parsers  \
+                            --disable-protocols --disable-network --disable-bsfs --disable-devices --disable-filters  \
+                            --disable-libvorbis --disable-libtheora \
+                            --disable-encoder=aac  \
+                            --disable-encoder=h263  \
+                            --disable-encoder=h263p \
+                            --disable-encoder=mpeg4 \
+                            --disable-encoder=msmpeg4v2 \
+                            --disable-encoder=msmpeg4v3 \
+                            --disable-decoder=aac   \
+                            --disable-decoder=ac3   \
+                            --disable-decoder=h263  \
+                            --disable-decoder=h264  \
+                            --disable-decoder=mp3   \
+                            --disable-decoder=mp3adu    \
+                            --disable-decoder=mpeg4 \
+                            --disable-decoder=rv10 \
+                            --disable-decoder=rv20 \
+                            --disable-decoder=rv30 \
+                            --disable-decoder=rv40 \
+                            --disable-decoder=cook \
+                            --disable-decoder=sipr \
+                            --disable-decoder=ra_144 \
+                            --disable-decoder=ra_288 \
+                            --disable-decoder=mpegvideo \
+                            --disable-decoder=msmpeg4v1  \
+                            --disable-decoder=msmpeg4v2  \
+                            --disable-decoder=msmpeg4v3  \
+                            --disable-decoder=wmv3   \
+                            --disable-decoder=vc1   \
+                            --disable-decoder=wmav1     \
+                            --disable-decoder=wmav2     \
+                            --disable-decoder=theora     \
+                            --enable-decoder=vorbis     \
+                            --enable-muxer=amr \
+                            --enable-muxer=tgp \
+                            --enable-muxer=mp4 \
+                            --enable-muxer=adts \
+                            --enable-demuxer=aac   \
+                            --enable-demuxer=ac3   \
+                            --enable-demuxer=avi   \
+                            --enable-demuxer=amr   \
+                            --enable-demuxer=h263    \
+                            --enable-demuxer=h264  \
+                            --enable-demuxer=m4v   \
+                            --enable-demuxer=mov   \
+                            --enable-demuxer=mp3   \
+                            --enable-demuxer=mpegts    \
+                            --enable-demuxer=mpegps    \
+                            --enable-demuxer=mpegtsraw \
+                            --enable-demuxer=mpegvideo \
+                            --enable-parser=aac    \
+                            --enable-parser=ac3    \
+                            --enable-parser=h263   \
+                            --enable-parser=h264   \
+                            --enable-parser=mpeg4video \
+                            --enable-parser=mpegaudio  \
+                            --enable-parser=mpegvideo \
+                            $(ffmpeg-extra-configure)"
 
 
   # if we are cross-compiling, tell ffmpeg so

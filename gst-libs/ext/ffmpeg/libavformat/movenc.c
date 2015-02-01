@@ -1140,6 +1140,8 @@ static int mov_write_mdia_tag(ByteIOContext *pb, MOVTrack *track)
 }
 
 #ifdef GST_EXT_FFMUX_ENHANCEMENT
+time_t timegm(struct tm *tm);
+
 static unsigned get_current_time (void)
 {
     time_t timep;
