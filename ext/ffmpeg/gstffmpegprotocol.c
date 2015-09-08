@@ -34,6 +34,10 @@
 #include "gstffmpeg.h"
 #include "gstffmpegpipe.h"
 
+#ifndef GST_EXT_FFMUX_ENHANCEMENT
+#define GST_EXT_FFMUX_ENHANCEMENT
+#endif /* GST_EXT_FFMUX_ENHANCEMENT */
+
 typedef struct _GstProtocolInfo GstProtocolInfo;
 
 struct _GstProtocolInfo
@@ -267,7 +271,11 @@ gst_ffmpegdata_close (URLContext * h)
   if (info == NULL)
     return 0;
 
+#ifdef GST_EXT_FFMUX_ENHANCEMENT
+  GST_WARNING ("Closing file - flag %d", h->flags);
+#else /* GST_EXT_FFMUX_ENHANCEMENT */
   GST_LOG ("Closing file");
+#endif /* GST_EXT_FFMUX_ENHANCEMENT */
 
   switch (h->flags) {
     case URL_WRONLY:

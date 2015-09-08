@@ -34,6 +34,8 @@
 #include "gstffmpeg.h"
 #include "gstffmpegcodecmap.h"
 #include "gstffmpegutils.h"
+#include "metadata.h"
+#include "movenc.h"
 
 #ifndef GST_EXT_FFMUX_ENHANCEMENT
 #define GST_EXT_FFMUX_ENHANCEMENT
@@ -215,6 +217,7 @@ gst_ffmpegmux_is_formatter (const char *name)
 #define ENTRY_SIZE_VIDEO_STSS   4
 #define ENTRY_SIZE_VIDEO_STSZ   4
 #define ENTRY_SIZE_VIDEO_STCO   4
+#define ENTRY_SIZE_AUDIO_STTS   8
 #define ENTRY_SIZE_AUDIO_STSZ   4
 #define ENTRY_SIZE_AUDIO_STCO   4
 
@@ -226,7 +229,7 @@ gst_ffmpegmux_is_formatter (const char *name)
 /* others */
 #define MUX_OTHERS_SIZE_DEFAULT         248     /* ftyp + free + moov + mvhd + udta */
 #define MUX_OTHERS_SIZE_HEADER_AMR      (MUX_OTHERS_SIZE_DEFAULT + 410)
-#define MUX_OTHERS_SIZE_HEADER_AAC      (MUX_OTHERS_SIZE_DEFAULT + 432)
+#define MUX_OTHERS_SIZE_HEADER_AAC      (MUX_OTHERS_SIZE_DEFAULT + 424)
 
 
 static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
@@ -234,8 +237,9 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 	int i = 0;
 	guint nb_video_frames = 0;
 	guint nb_video_i_frames = 0;
-	guint nb_stts_entry = 0;
+	guint nb_video_stts_entry = 0;
 	guint nb_audio_frames = 0;
+	guint nb_audio_stts_entry = 0;
 	gboolean video_stream = FALSE;
 	gboolean audio_stream = FALSE;
 	guint exp_size = 0;
@@ -253,12 +257,13 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 		if (codec_context->codec_type == CODEC_TYPE_VIDEO) {
 			nb_video_frames += codec_context->frame_number;
 			nb_video_i_frames += codec_context->i_frame_number;
-			nb_stts_entry += codec_context->stts_count;
+			nb_video_stts_entry += codec_context->stts_count;
 
 			video_stream = TRUE;
 			video_codec_id = codec_context->codec_id;
 		} else if (codec_context->codec_type == CODEC_TYPE_AUDIO) {
 			nb_audio_frames += codec_context->frame_number;
+			nb_audio_stts_entry += codec_context->stts_count;
 
 			audio_stream = TRUE;
 			audio_codec_id = codec_context->codec_id;
@@ -309,7 +314,7 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 	          stsz = 20 + (4*frame)
 	          stco = 16 + (4*frame)
 
-	- AUDIO:AAC = 432 + (8*audio_frame)
+	- AUDIO:AAC = 424 + + (8*stts_count) + (8*audio_frame)
 	  trak = 8
 	    tkhd = 92
 	    mdia = 8
@@ -320,7 +325,7 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 	        dinf = 36
 	        stbl = 8
 	          stsd = 91
-	          stts = 24
+	          stts = 16 + (8*stts_count)
 	          stsc = 28
 	          stsz = 20 + (4*frame)
 	          stco = 16 + (4*frame)
@@ -336,7 +341,7 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 	        dinf = 36
 	        stbl = 8
 	          stsd = 69 -> different from AAC
-	          stts = 24
+	          stts = 24 -> different from AAC
 	          stsc = 28
 	          stsz = 20 -> different from AAC
 	          stco = 16 + (4*frame)
@@ -353,7 +358,7 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 		}
 
 		/* frame related */
-		exp_size += (ENTRY_SIZE_VIDEO_STTS * nb_stts_entry) + \
+		exp_size += (ENTRY_SIZE_VIDEO_STTS * nb_video_stts_entry) + \
 		            (ENTRY_SIZE_VIDEO_STSS * nb_video_i_frames) + \
 		            ((ENTRY_SIZE_VIDEO_STSZ + ENTRY_SIZE_VIDEO_STCO) * nb_video_frames);
        }
@@ -367,10 +372,12 @@ static void update_expected_trailer_size(GstFFMpegMux *ffmpegmux)
 			/* others - ffmux_3gp/mp4/amr */
 			if (audio_codec_id == CODEC_ID_AMR_NB) {
 				/* AMR_NB codec */
-                               exp_size += MUX_OTHERS_SIZE_HEADER_AMR + (ENTRY_SIZE_AUDIO_STCO * nb_audio_frames);
+				exp_size += MUX_OTHERS_SIZE_HEADER_AMR + (ENTRY_SIZE_AUDIO_STCO * nb_audio_frames);
 			} else {
 				/* AAC codec */
-                               exp_size += MUX_OTHERS_SIZE_HEADER_AAC + ((ENTRY_SIZE_AUDIO_STSZ + ENTRY_SIZE_AUDIO_STCO) * nb_audio_frames);
+				exp_size += MUX_OTHERS_SIZE_HEADER_AAC + \
+				            (ENTRY_SIZE_AUDIO_STTS * nb_audio_stts_entry) + \
+				            ((ENTRY_SIZE_AUDIO_STSZ + ENTRY_SIZE_AUDIO_STCO) * nb_audio_frames);
 			}
 		}
 	}
@@ -496,13 +503,13 @@ gst_ffmpegmux_class_init (GstFFMpegMuxClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_PRELOAD,
       g_param_spec_int ("preload", "preload",
-          "Set the initial demux-decode delay (in microseconds)", 0, G_MAXINT,
-          0, G_PARAM_READWRITE));
+          "Set the initial demux-decode delay (in microseconds)",
+          0, G_MAXINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_MAXDELAY,
       g_param_spec_int ("maxdelay", "maxdelay",
           "Set the maximum demux-decode delay (in microseconds)", 0, G_MAXINT,
-          0, G_PARAM_READWRITE));
+          0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gstelement_class->request_new_pad = gst_ffmpegmux_request_new_pad;
   gstelement_class->change_state = gst_ffmpegmux_change_state;
@@ -515,15 +522,15 @@ gst_ffmpegmux_class_init (GstFFMpegMuxClass * klass)
   g_object_class_install_property (gobject_class, PROP_EXPECTED_TRAILER_SIZE,
       g_param_spec_uint ("expected-trailer-size", "Expected Trailer Size",
           "Expected trailer size (bytes)",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_NUMBER_VIDEO_FRAMES,
       g_param_spec_uint ("number-video-frames", "Number of video frames",
           "Current number of video frames",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (gobject_class, PROP_NUMBER_AUDIO_FRAMES,
       g_param_spec_uint ("number-audio-frames", "Number of audio frames",
           "Current number of audio frames",
-          0, G_MAXUINT, 0, G_PARAM_READABLE));
+          0, G_MAXUINT, 0, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 #endif
 }
 
@@ -569,7 +576,7 @@ gst_ffmpegmux_release_pad (GstElement * element, GstPad * pad)
   GstFFMpegMux *ffmpegmux = (GstFFMpegMux *) element;
   GstFFMpegMuxPad *collect_pad;
   AVStream *st;
-  
+  int i;
   collect_pad = (GstFFMpegMuxPad *) gst_pad_get_element_private (pad);
   
   GST_DEBUG("Release requested pad[%s:%s]", GST_DEBUG_PAD_NAME(pad));  
@@ -586,10 +593,37 @@ gst_ffmpegmux_release_pad (GstElement * element, GstPad * pad)
 	{
 	  ffmpegmux->audiopads--;
 	}
+	if(st->codec->extradata)
+	{
+		av_free(st->codec->extradata);
+		st->codec->extradata = NULL;
+	}
 	g_free(st->codec);
+	st->codec = NULL;
     }
+	if(ffmpegmux->context->priv_data)
+	{
+		MOVMuxContext *mov = ffmpegmux->context->priv_data;
+		if(mov && mov->tracks)
+		{
+			for(i=0;i<ffmpegmux->context->nb_streams;i++)
+			{
+				MOVTrack *trk = &mov->tracks[i];
+				if(trk && trk->vosData)
+				{
+					av_free(trk->vosData);
+					trk->vosData = NULL;
+				}
+			}
+			av_free(mov->tracks);
+			mov->tracks = NULL;
+		}
+		av_free(ffmpegmux->context->priv_data);
+		ffmpegmux->context->priv_data = NULL;
+	}
     ffmpegmux->context->nb_streams--;
     g_free(st);
+    st = NULL;
  }
   gst_collect_pads_remove_pad (ffmpegmux->collect, pad);
   gst_element_remove_pad (element, pad);
@@ -649,12 +683,41 @@ gst_ffmpegmux_get_property (GObject * object, guint prop_id, GValue * value,
   }
 }
 
+static void
+gst_ffmpegmux_free_metadata (GObject * object)
+{
+	GstFFMpegMux *ffmpegmux = (GstFFMpegMux *) object;
+	int i;
+	if(ffmpegmux->context->metadata)
+	{
+		for(i = 0;i < ffmpegmux->context->metadata->count; i++)
+		{
+			if(ffmpegmux->context->metadata->elems[i].value)
+			{
+				av_free(ffmpegmux->context->metadata->elems[i].value);
+				ffmpegmux->context->metadata->elems[i].value = NULL;
+			}
+			if(ffmpegmux->context->metadata->elems[i].key)
+			{
+				av_free(ffmpegmux->context->metadata->elems[i].key);
+				ffmpegmux->context->metadata->elems[i].key = NULL;
+			}
+		}
+		if(ffmpegmux->context->metadata->elems)
+		{
+			av_free(ffmpegmux->context->metadata->elems);
+			ffmpegmux->context->metadata->elems = NULL;
+		}
+		av_free(ffmpegmux->context->metadata);
+		ffmpegmux->context->metadata = NULL;
+	}
+}
 
 static void
 gst_ffmpegmux_finalize (GObject * object)
 {
   GstFFMpegMux *ffmpegmux = (GstFFMpegMux *) object;
-
+  gst_ffmpegmux_free_metadata(object);
   g_free (ffmpegmux->context);
   gst_object_unref (ffmpegmux->collect);
 
@@ -1028,7 +1091,7 @@ gst_ffmpegmux_collected (GstCollectPads * pads, gpointer user_data)
 #ifdef GST_EXT_FFMUX_ENHANCEMENT
     if (ffmpegmux->context->streams[best_pad->padnum]->codec->codec_type == CODEC_TYPE_VIDEO) {
         static int last_duration = -1;
-	static int64_t last_dts = -1;
+        static int64_t last_dts = -1;
         if (GST_BUFFER_DURATION_IS_VALID (buf)) {
           pkt.duration = GST_TIME_AS_MSECONDS(GST_BUFFER_DURATION(buf));
         } else {
@@ -1051,7 +1114,22 @@ gst_ffmpegmux_collected (GstCollectPads * pads, gpointer user_data)
           ffmpegmux->context->streams[best_pad->padnum]->codec->i_frame_number++;
         }
     } else {
+      static int last_duration_audio = -1;
+      static int64_t last_dts_audio = -1;
+
       if (GST_BUFFER_DURATION_IS_VALID(buf)) {
+        if (last_dts_audio == -1) {
+          /* first time */
+          ffmpegmux->context->streams[best_pad->padnum]->codec->stts_count++;
+        } else {
+          /* check real duration : current dts - last dts */
+          if (last_duration_audio != (pkt.dts - last_dts_audio)) {
+            last_duration_audio = pkt.dts - last_dts_audio;
+            ffmpegmux->context->streams[best_pad->padnum]->codec->stts_count++;
+          }
+        }
+        last_dts_audio = pkt.dts;
+
         pkt.duration =
             gst_ffmpeg_time_gst_to_ff (GST_BUFFER_DURATION (buf),
             ffmpegmux->context->streams[best_pad->padnum]->time_base);
@@ -1075,11 +1153,17 @@ gst_ffmpegmux_collected (GstCollectPads * pads, gpointer user_data)
       g_free (pkt.data);
   } else {
     /* close down */
+#ifdef GST_EXT_FFMUX_ENHANCEMENT
+    GST_WARNING_OBJECT(ffmpegmux, "close down");
+#endif /* GST_EXT_FFMUX_ENHANCEMENT */
     av_write_trailer (ffmpegmux->context);
     ffmpegmux->opened = FALSE;
     put_flush_packet (ffmpegmux->context->pb);
     url_fclose (ffmpegmux->context->pb);
     gst_pad_push_event (ffmpegmux->srcpad, gst_event_new_eos ());
+#ifdef GST_EXT_FFMUX_ENHANCEMENT
+    GST_WARNING_OBJECT(ffmpegmux, "send EOS done");
+#endif /* GST_EXT_FFMUX_ENHANCEMENT */
     return GST_FLOW_UNEXPECTED;
   }
 

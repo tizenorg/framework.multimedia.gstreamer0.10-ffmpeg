@@ -1826,7 +1826,7 @@ gst_ffmpeg_codectype_to_audio_caps (AVCodecContext * context,
     caps = gst_caps_new_empty ();
     for (i = 0; codec->sample_fmts[i] != -1; i++) {
       temp =
-          gst_ffmpeg_smpfmt_to_caps (codec->sample_fmts[0], context, codec_id);
+          gst_ffmpeg_smpfmt_to_caps (codec->sample_fmts[i], context, codec_id);
       if (temp != NULL)
         gst_caps_append (caps, temp);
     }
@@ -2314,7 +2314,8 @@ gst_ffmpeg_caps_with_codecid (enum CodecID codec_id,
        * (<= 0.8.9). This should be removed at some point, because
        * it causes wrong decoded frame order. */
       if (!context->extradata) {
-        gint halfpel_flag, thirdpel_flag, low_delay, unknown_svq3_flag;
+        /* fix prevent defect */
+        gint halfpel_flag = 0, thirdpel_flag = 0, low_delay = 0, unknown_svq3_flag = 0;
         guint16 flags;
 
         if (gst_structure_get_int (str, "halfpel_flag", &halfpel_flag) ||

@@ -148,8 +148,8 @@
 #define free please_use_av_free
 #undef  realloc
 #define realloc please_use_av_realloc
-#undef  time
-#define time time_is_forbidden_due_to_security_issues
+//#undef  time
+//#define time time_is_forbidden_due_to_security_issues
 #undef  rand
 #define rand rand_is_forbidden_due_to_state_trashing_use_av_lfg_get
 #undef  srand

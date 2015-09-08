@@ -40,6 +40,7 @@
 #endif
 
 #ifdef GST_EXT_FFMUX_ENHANCEMENT
+#include <time.h>
 #define globalTimescale 1000
 #endif
 //FIXME support 64 bit variant with wide placeholders
@@ -1138,6 +1139,20 @@ static int mov_write_mdia_tag(ByteIOContext *pb, MOVTrack *track)
     return updateSize(pb, pos);
 }
 
+#ifdef GST_EXT_FFMUX_ENHANCEMENT
+time_t timegm(struct tm *tm);
+
+static unsigned get_current_time (void)
+{
+    time_t timep;
+    struct tm *p;
+    time(&timep);
+    p=localtime(&timep);
+    timep = timegm(p);
+    return timep + 0x7C25B080;//1904 based
+}
+#endif
+
 static int mov_write_tkhd_tag(ByteIOContext *pb, MOVTrack *track, AVStream *st)
 {
     int64_t duration = av_rescale_rnd(track->trackDuration, MOV_TIMESCALE,
@@ -2125,7 +2140,11 @@ static int mov_write_header(AVFormatContext *s)
     }
 
     mov_write_mdat_tag(pb, mov);
+    #ifdef GST_EXT_FFMUX_ENHANCEMENT
+    mov->time = get_current_time();
+    #else
     mov->time = s->timestamp + 0x7C25B080; //1970 based -> 1904 based
+    #endif
 
     if (mov->chapter_track)
         mov_create_chapter_track(s, mov->chapter_track);

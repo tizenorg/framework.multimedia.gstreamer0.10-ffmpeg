@@ -2945,7 +2945,11 @@ gst_ffmpegdec_register (GstPlugin * plugin)
       case CODEC_ID_RV30:
       case CODEC_ID_RV40:
       case CODEC_ID_COOK:
+#ifdef FFDEC_RANK_MODIFICATION
+        rank = GST_RANK_SECONDARY;
+#else /* FFDEC_RANK_MODIFICATION */
         rank = GST_RANK_PRIMARY;
+#endif /* FFDEC_RANK_MODIFICATION */
         break;
         /* DVVIDEO: we have a good dv decoder, fast on both ppc as well as x86.
          * They say libdv's quality is better though. leave as secondary.
